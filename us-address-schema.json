@@ -3,6 +3,9 @@
   "title": "USAddress",
   "type": "object",
   "properties": {
+    "street_number": {
+      "type": "string"
+    },
     "street": {
       "type": "string"
     },
