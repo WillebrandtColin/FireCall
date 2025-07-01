@@ -6,6 +6,9 @@
     "street": {
       "type": "string"
     },
+    "street_type": {
+      "type": "string"
+    },
     "city": {
       "type": "string"
     },
