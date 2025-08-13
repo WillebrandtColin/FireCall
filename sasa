@@ -1,0 +1,219 @@
+# automation_script.py - CORRECTED VERSION
+import re
+import os
+from datetime import date
+from playwright.sync_api import sync_playwright, Page, expect
+
+# Default data dictionary. This can be overridden by external data.
+DEFAULT_CLAIM_DATA = {
+    # Main Info
+    "reported_by_search": "property owner",
+    "reported_by_select": "Property Owner",
+    "referred_by_search": "Willebrandt, ERC-Colin",
+    "referred_by_select": "Willebrandt, ERC-Colin",
+    "provider_office_search": "PDR of Ralei",
+    "provider_office_select": "PDR of Ralei",
+    "client_search": "Residentials",
+    "client_select": "Residentials",
+
+    # Customer Information
+    "first_name": "TestFirstName",
+    "last_name": "TestLastName",
+    "email": "TestEmail@Gmail.com",
+    "address": "248 Turner Oaks Dr",
+    "zip_code": "27519",
+    "phone": "19195551234",
+
+    # Loss Details
+    "loss_date": date.today().strftime("%Y/%m/%d"),
+    "job_name": "TestFirstName, TestLastName",
+    "loss_type_search": "water",
+    "loss_type_select": "Water - Sewer Backup, Black,",
+    "job_type_select": "Appraisal/Consulting",
+    "loss_description": "This is a test loss description created by an automated script.",
+}
+
+def login(page: Page) -> None:
+    """Logs into the RMS system using environment variables."""
+    company_id = os.getenv("RMS_COMPANY_ID", "96425") # Added defaults for standalone run
+    username = os.getenv("RMS_USERNAME", "cwillebrandt")
+    password = os.getenv("RMS_PASSWORD", "colin123")
+    
+    page.goto("https://rms-ngs.net/rms/Module/User/Login.aspx")
+    expect(page.get_by_role("button", name="Login")).to_be_visible()
+    
+    page.get_by_role("textbox", name="Company ID").fill(company_id)
+    page.get_by_role("textbox", name="User Name").fill(username)
+    page.get_by_role("textbox", name="Password").fill(password)
+    page.get_by_role("button", name="Login").click()
+
+    # Wait for post-login page to load
+    expect(page).to_have_url(re.compile(r".*uPostLogin\.aspx"), timeout=15000)
+
+def navigate_to_create_claim(page: Page) -> None:
+    """Navigates from the dashboard to the create claim page."""
+    # These two clicks are critical and were missing.
+    page.locator("#border-1b6d6a33-e2b2-e539-1fb5-92d995438b1d").click()
+    page.locator("#border-fe068648-9018-90c3-4d38-d203bd76795d").click()
+    page.get_by_role("link", name="Create Claim").click()
+
+def fill_participants(page: Page) -> None:
+    """Fills the internal and external participant sections of the form."""
+    # This entire section was missing and is critical for creating a valid claim.
+    # The 1-second waits are preserved from codegen as they likely prevent race conditions.
+    
+    # Internal participants
+    page.locator("#ctl00_ContentPlaceHolder1_ProviderCreateClaim_InternalParticpantsControl_InternalParticipantsList_ctl00_EstimatorComboBox_Input").fill("RENC")
+    page.get_by_text("RENC, estimators").click()
+    page.wait_for_timeout(1000)
+
+    page.locator("#ctl00_ContentPlaceHolder1_ProviderCreateClaim_InternalParticpantsControl_InternalParticipantsList_ctl03_EstimatorComboBox_Input").fill("None")
+    page.get_by_text("None, None").click()
+    page.wait_for_timeout(1000)
+
+    page.locator("#ctl00_ContentPlaceHolder1_ProviderCreateClaim_InternalParticpantsControl_InternalParticipantsList_ctl06_EstimatorComboBox_Input").fill("willebrandt")
+    page.get_by_text("Willebrandt, Colin").click()
+    page.wait_for_timeout(1000)
+
+    page.locator("#ctl00_ContentPlaceHolder1_ProviderCreateClaim_InternalParticpantsControl_InternalParticipantsList_ctl01_EstimatorComboBox_Input").fill("essen")
+    page.get_by_text("Reescano, Essence").click()
+    page.wait_for_timeout(1000)
+
+    page.locator("#ctl00_ContentPlaceHolder1_ProviderCreateClaim_InternalParticpantsControl_InternalParticipantsList_ctl04_EstimatorComboBox_Input").fill("rhond")
+    page.get_by_text("Rhond").click()
+    page.wait_for_timeout(1000)
+
+    page.locator("#ctl00_ContentPlaceHolder1_ProviderCreateClaim_InternalParticpantsControl_InternalParticipantsList_ctl02_EstimatorComboBox_Input").fill("non")
+    page.locator("#ctl00_ContentPlaceHolder1_ProviderCreateClaim_InternalParticpantsControl_InternalParticipantsList_ctl02_EstimatorComboBox_DropDown").get_by_text("None, None").click()
+    page.wait_for_timeout(1000)
+
+    page.locator("#ctl00_ContentPlaceHolder1_ProviderCreateClaim_InternalParticpantsControl_InternalParticipantsList_ctl05_EstimatorComboBox_Input").fill("willebran")
+    page.get_by_text("Willebran", exact=True).click()
+    page.wait_for_timeout(1000)
+
+    # External participants
+    page.locator("#ctl00_ContentPlaceHolder1_ProviderCreateClaim_ExternalParticipants_SystemCompanyParticipantCombobox_2_Input").fill("pdr")
+    page.get_by_text("PDR-KHTX-JCA").click()
+    page.wait_for_timeout(1000)
+
+    page.locator("#ctl00_ContentPlaceHolder1_ProviderCreateClaim_ExternalParticipants_SystemIndividualParticipantCombobox_4_Input").click()
+    page.get_by_text("JCA, JCA").click()
+    page.wait_for_timeout(1000)
+
+    page.locator("#ctl00_ContentPlaceHolder1_ProviderCreateClaim_ExternalParticipants_SystemCompanyParticipantCombobox_3_Input").fill("Self")
+    page.get_by_text("Self Pay").click()
+    page.wait_for_timeout(1000)
+
+    page.locator("#ctl00_ContentPlaceHolder1_ProviderCreateClaim_ExternalParticipants_SystemIndividualParticipantCombobox_3_Input").click()
+    page.get_by_text("Pay, Self").click()
+    page.wait_for_timeout(1000)
+
+    page.locator("#ctl00_ContentPlaceHolder1_ProviderCreateClaim_ExternalParticipants_SystemIndividualParticipantCombobox_34_Input").click()
+    page.locator("#ctl00_ContentPlaceHolder1_ProviderCreateClaim_ExternalParticipants_SystemIndividualParticipantCombobox_34_DropDown").get_by_text("Pay, Self").click()
+    page.wait_for_timeout(1000)
+
+    page.locator("#ctl00_ContentPlaceHolder1_ProviderCreateClaim_ExternalParticipants_SystemCompanyParticipantCombobox_24_Input").fill("pdr")
+    page.get_by_text("PDR-RENC").click()
+    page.wait_for_timeout(1000)
+
+    page.locator("#ctl00_ContentPlaceHolder1_ProviderCreateClaim_ExternalParticipants_SystemIndividualParticipantCombobox_33_Input").click()
+    page.get_by_text("Varner, Jason").click()
+    page.wait_for_timeout(1000)
+
+    page.locator("#ctl00_ContentPlaceHolder1_ProviderCreateClaim_ExternalParticipants_SystemCompanyParticipantCombobox_10_Input").fill("pdr")
+    page.locator("#ctl00_ContentPlaceHolder1_ProviderCreateClaim_ExternalParticipants_SystemCompanyParticipantCombobox_10_DropDown").get_by_text("PDR-KHTX").click()
+    page.wait_for_timeout(1000)
+
+    page.locator("#ctl00_ContentPlaceHolder1_ProviderCreateClaim_ExternalParticipants_SystemCompanyParticipantCombobox_23_Input").fill("No")
+    page.get_by_text("No TPA").click()
+    page.wait_for_timeout(1000)
+
+def fill_claim_form(page: Page, data: dict) -> None:
+    """Fills out the claim form using data from a dictionary."""
+    # Main Info - Removed 'exact=True' to match codegen behavior
+    page.locator("#ctl00_ContentPlaceHolder1_ProviderCreateClaim_DropDown_ReportedBY_Input").fill(data["reported_by_search"])
+    page.get_by_text(data["reported_by_select"]).click()
+    page.locator("#ctl00_ContentPlaceHolder1_ProviderCreateClaim_DropDown_ReferredBy_Input").fill(data["referred_by_search"])
+    page.get_by_text(data["referred_by_select"]).click()
+    page.locator("#ctl00_ContentPlaceHolder1_ProviderCreateClaim_DropDown_ProviderOffice_Input").fill(data["provider_office_search"])
+    page.get_by_text(data["provider_office_select"]).click()
+    page.locator("#ctl00_ContentPlaceHolder1_ProviderCreateClaim_DropDown_Client_Input").fill(data["client_search"])
+    page.get_by_role("listitem").filter(has_text=data["client_select"]).click()
+
+    # Customer Information
+    page.locator("#ctl00_ContentPlaceHolder1_ProviderCreateClaim_TextBox_FirstName").fill(data["first_name"])
+    page.locator("#ctl00_ContentPlaceHolder1_ProviderCreateClaim_TextBox_LastName").fill(data["last_name"])
+    page.locator("#ctl00_ContentPlaceHolder1_ProviderCreateClaim_TextBox_Email").fill(data["email"])
+    page.locator("#ctl00_ContentPlaceHolder1_ProviderCreateClaim_TextBox_Address_Input").fill(data["address"])
+    page.locator("#ctl00_ContentPlaceHolder1_ProviderCreateClaim_TextBox_Zip").fill(data["zip_code"])
+    page.locator("#ctl00_ContentPlaceHolder1_ProviderCreateClaim_TextBox_MainPhone").fill(data["phone"])
+    
+    # Added the 1-second wait from codegen before the checkbox action.
+    page.wait_for_timeout(1000)
+    page.get_by_role("checkbox", name="Same as Customer Address").check()
+    
+    # Fill out the extensive participants section
+    fill_participants(page)
+
+    # Loss Details
+    page.locator("#ctl00_ContentPlaceHolder1_ProviderCreateClaim_DatePicker_DateOffLoss_dateInput").fill(data["loss_date"])
+    page.locator("#ctl00_ContentPlaceHolder1_ProviderCreateClaim_JobNameRadTextBox").fill(data["job_name"])
+    page.locator("#ctl00_ContentPlaceHolder1_ProviderCreateClaim_DropDown_LossType_Input").fill(data["loss_type_search"])
+    page.get_by_text(data["loss_type_select"]).click()
+    page.get_by_text(data["job_type_select"]).click()
+    page.get_by_role("textbox", name="Enter Loss Description").fill(data["loss_description"])
+
+    # Save and create the claim
+    page.get_by_role('button', name='Save & Go to Slideboard').click()
+    page.get_by_role('button', name='Create Claim').click()
+
+def complete_task(page: Page, task_name: str) -> None:
+    """Finds a task on the slideboard by name and completes it."""
+    task_cell = page.get_by_role('cell', name=task_name, exact=True)
+    expect(task_cell).to_be_visible(timeout=10000)
+    task_cell.click()
+
+    iframe = page.frame_locator('iframe[name="RadWindow_CommonWindow"]')
+    expect(iframe.get_by_role('button', name='Complete This Task')).to_be_visible()
+    # Using the exact checkbox name from codegen for reliability
+    iframe.get_by_role('checkbox', name='Please select the checkbox to').check()
+    iframe.get_by_role('button', name='Complete This Task').click()
+    # Removed the expect(iframe).to_be_hidden() to exactly match codegen flow.
+    # A short, explicit wait is better if the modal closing is slow.
+    page.wait_for_timeout(500) # Small wait to allow modal to start closing.
+
+def run_automation(claim_data: dict) -> None:
+    """The main function that runs the entire browser automation."""
+    final_data = DEFAULT_CLAIM_DATA.copy()
+    final_data.update(claim_data) # Overwrite defaults with any provided data
+
+    print(f"🚀 Starting automation for: {final_data.get('job_name')}")
+    with sync_playwright() as p:
+        browser = p.chromium.launch(headless=False)
+        page = browser.new_page()
+        try:
+            login(page)
+            navigate_to_create_claim(page)
+            fill_claim_form(page, final_data)
+
+            # Process initial tasks
+            complete_task(page, '01 - Contact Customer')
+            complete_task(page, '01. Assign Estimator to Prepare Estimate')
+            complete_task(page, '02 - Arrive onsite')
+
+            print("✅ Claim created and initial tasks completed successfully!")
+        except Exception as e:
+            print(f"❌ An error occurred during automation: {e}")
+            # Save a screenshot for debugging
+            screenshot_path = os.path.join(os.getcwd(), "error_screenshot.png")
+            page.screenshot(path=screenshot_path)
+            print(f"📸 Screenshot saved to {screenshot_path}")
+        finally:
+            browser.close()
+            print("📦 Browser closed.")
+
+if __name__ == "__main__":
+    # This allows the script to be run directly for testing.
+    # It will use the DEFAULT_CLAIM_DATA.
+    print("Running script in standalone mode for testing...")
+    run_automation({})
